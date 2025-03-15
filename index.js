@@ -39,13 +39,15 @@ const swapContractABI = [
 ];
 
 const PING_ABI = [
-  "function mint(address to, uint256 amount) public payable",
-  "function balanceOf(address owner) view returns (uint256)"
+  "function mint() public payable",
+  "function balanceOf(address owner) view returns (uint256)",
+  "function isMinter(address account) view returns (bool)"
 ];
 
 const PONG_ABI = [
-  "function mint(address to, uint256 amount) public payable",
-  "function balanceOf(address owner) view returns (uint256)"
+  "function mint() public payable",
+  "function balanceOf(address owner) view returns (uint256)",
+  "function isMinter(address account) view returns (bool)"
 ];
 
 let walletInfo = {
@@ -108,6 +110,7 @@ function delay(ms) {
     })
   ]);
 }
+
 function getTokenName(address) {
   if (address.toLowerCase() === PING_TOKEN_ADDRESS.toLowerCase()) {
     return "Ping";
@@ -119,321 +122,322 @@ function getTokenName(address) {
 }
 
 async function claimFaucetPing() {
-  if (claimFaucetRunning) {
-    addLog("Claim Faucet Ping sedang berjalan.");
-    return;
-  }
-  claimFaucetRunning = true;
-  updateFaucetSubMenuItems();
-  try {
-    const provider = new ethers.JsonRpcProvider(RPC_URL);
-    let pk = PRIVATE_KEY.trim();
-    if (!pk.startsWith("0x")) pk = "0x" + pk;
-    const wallet = new ethers.Wallet(pk, provider);
-    const pingContract = new ethers.Contract(PING_TOKEN_ADDRESS, PING_ABI, wallet);
-    const claimAmount = ethers.parseUnits("1000", 18);
-    addLog("Mengklaim Faucet Ping...");
-    const tx = await pingContract.mint(wallet.address, claimAmount, { value: 0 });
-    addLog(`Transaksi dikirim. Tx Hash: ${getShortHash(tx.hash)}`);
-    await tx.wait();
-    addLog("Claim Faucet Ping berhasil!");
-    await delay(5000);
-    updateWalletData();
-  } catch (error) {
-    addLog("Claim Faucet Ping gagal: " + error.message);
-  } finally {
-    claimFaucetRunning = false;
+    if (claimFaucetRunning) {
+      addLog("Claim Faucet Ping sedang berjalan.");
+      return;
+    }
+    claimFaucetRunning = true;
     updateFaucetSubMenuItems();
+    try {
+      const provider = new ethers.JsonRpcProvider(RPC_URL);
+      let pk = PRIVATE_KEY.trim();
+      if (!pk.startsWith("0x")) pk = "0x" + pk;
+      const wallet = new ethers.Wallet(pk, provider);
+      const pingContract = new ethers.Contract(PING_TOKEN_ADDRESS, PING_ABI, wallet);
+      const alreadyMinted = await pingContract.isMinter(wallet.address);
+      if (alreadyMinted) {
+        addLog("Faucet PING sudah diklaim sebelumnya.");
+        return;
+      }
+      addLog("Mengklaim Faucet Ping...");
+      const tx = await pingContract.mint({ value: 0 });
+      addLog(`Transaksi dikirim. Tx Hash: ${getShortHash(tx.hash)}`);
+      await tx.wait();
+      addLog("Claim Faucet Ping berhasil!");
+      await delay(5000);
+      updateWalletData();
+    } catch (error) {
+      addLog("Claim Faucet Ping gagal: " + error.message);
+    } finally {
+      claimFaucetRunning = false;
+      updateFaucetSubMenuItems();
+    }
   }
-}
 
-async function claimFaucetPong() {
-  if (claimFaucetRunning) {
-    addLog("Claim Faucet Pong sedang berjalan.");
-    return;
-  }
-  claimFaucetRunning = true;
-  updateFaucetSubMenuItems();
-  try {
-    const provider = new ethers.JsonRpcProvider(RPC_URL);
-    let pk = PRIVATE_KEY.trim();
-    if (!pk.startsWith("0x")) pk = "0x" + pk;
-    const wallet = new ethers.Wallet(pk, provider);
-    const pongContract = new ethers.Contract(PONG_TOKEN_ADDRESS, PONG_ABI, wallet);
-    const claimAmount = ethers.parseUnits("1000", 18);
-    addLog("Mengklaim Faucet Pong...");
-    const tx = await pongContract.mint(wallet.address, claimAmount, { value: 0 });
-    addLog(`Transaksi dikirim. Tx Hash: ${getShortHash(tx.hash)}`);
-    await tx.wait();
-    addLog("Claim Faucet Pong berhasil!");
-    await delay(5000);
-    updateWalletData();
-  } catch (error) {
-    addLog("Claim Faucet Pong gagal: " + error.message);
-  } finally {
-    claimFaucetRunning = false;
+  async function claimFaucetPong() {
+    if (claimFaucetRunning) {
+      addLog("Claim Faucet Pong sedang berjalan.");
+      return;
+    }
+    claimFaucetRunning = true;
     updateFaucetSubMenuItems();
+    try {
+      const provider = new ethers.JsonRpcProvider(RPC_URL);
+      let pk = PRIVATE_KEY.trim();
+      if (!pk.startsWith("0x")) pk = "0x" + pk;
+      const wallet = new ethers.Wallet(pk, provider);
+      const pongContract = new ethers.Contract(PONG_TOKEN_ADDRESS, PONG_ABI, wallet);
+      const alreadyMinted = await pongContract.isMinter(wallet.address);
+      if (alreadyMinted) {
+        addLog("Faucet PONG sudah diklaim sebelumnya.");
+        return;
+      }
+      addLog("Mengklaim Faucet Pong...");
+      const tx = await pongContract.mint({ value: 0 });
+      addLog(`Transaksi dikirim. Tx Hash: ${getShortHash(tx.hash)}`);
+      await tx.wait();
+      addLog("Claim Faucet Pong berhasil!");
+      await delay(5000);
+      updateWalletData();
+    } catch (error) {
+      addLog("Claim Faucet Pong gagal: " + error.message);
+    } finally {
+      claimFaucetRunning = false;
+      updateFaucetSubMenuItems();
+    }
   }
-}
 
-async function updateWalletData() {
-  try {
-    if (!RPC_URL || !PRIVATE_KEY) {
-      throw new Error("RPC_URL / PRIVATE_KEY tidak terdefinisi di .env");
+  async function updateWalletData() {
+    try {
+      if (!RPC_URL || !PRIVATE_KEY) {
+        throw new Error("RPC_URL / PRIVATE_KEY tidak terdefinisi di .env");
+      }
+      const provider = new ethers.JsonRpcProvider(RPC_URL);
+      let pk = PRIVATE_KEY.trim();
+      if (!pk.startsWith("0x")) pk = "0x" + pk;
+      const wallet = new ethers.Wallet(pk, provider);
+      globalWallet = wallet;
+      walletInfo.address = wallet.address;
+      const balanceNative = await provider.getBalance(wallet.address);
+      walletInfo.balanceNative = ethers.formatEther(balanceNative);
+      if (PING_TOKEN_ADDRESS) {
+        const pingContract = new ethers.Contract(PING_TOKEN_ADDRESS, ["function balanceOf(address) view returns (uint256)"], provider);
+        const pingBalance = await pingContract.balanceOf(wallet.address);
+        walletInfo.balancePing = ethers.formatEther(pingBalance);
+      }
+      if (PONG_TOKEN_ADDRESS) {
+        const pongContract = new ethers.Contract(PONG_TOKEN_ADDRESS, ["function balanceOf(address) view returns (uint256)"], provider);
+        const pongBalance = await pongContract.balanceOf(wallet.address);
+        walletInfo.balancePong = ethers.formatEther(pongBalance);
+      }
+      updateWallet();
+      addLog("Saldo & Wallet Updated !!");
+    } catch (error) {
+      addLog("Gagal mengambil data wallet: " + error.message);
     }
-    const provider = new ethers.JsonRpcProvider(RPC_URL);
-    let pk = PRIVATE_KEY.trim();
-    if (!pk.startsWith("0x")) pk = "0x" + pk;
-    const wallet = new ethers.Wallet(pk, provider);
-    globalWallet = wallet;
-    walletInfo.address = wallet.address;
-    const balanceNative = await provider.getBalance(wallet.address);
-    walletInfo.balanceNative = ethers.formatEther(balanceNative);
-    if (PING_TOKEN_ADDRESS) {
-      const pingContract = new ethers.Contract(PING_TOKEN_ADDRESS, ["function balanceOf(address) view returns (uint256)"], provider);
-      const pingBalance = await pingContract.balanceOf(wallet.address);
-      walletInfo.balancePing = ethers.formatEther(pingBalance);
-    }
-    if (PONG_TOKEN_ADDRESS) {
-      const pongContract = new ethers.Contract(PONG_TOKEN_ADDRESS, ["function balanceOf(address) view returns (uint256)"], provider);
-      const pongBalance = await pongContract.balanceOf(wallet.address);
-      walletInfo.balancePong = ethers.formatEther(pongBalance);
-    }
-    updateWallet();
-    addLog("Saldo & Wallet Updated !!");
-  } catch (error) {
-    addLog("Gagal mengambil data wallet: " + error.message);
   }
-}
 
 function updateWallet() {
   const shortAddress = walletInfo.address ? getShortAddress(walletInfo.address) : "N/A";
-  const content = ` Address : ${shortAddress}
- STT     : ${walletInfo.balanceNative}
- Ping    : ${walletInfo.balancePing}
- Pong    : ${walletInfo.balancePong}
- Network : ${walletInfo.network}
-`;
+  const content = `{bold}{bright-blue-fg}Address    :{/bright-blue-fg}{/bold} {bold}{bright-magenta-fg}${shortAddress}{/bright-magenta-fg}{/bold}
+├─ {bold}{bright-yellow-fg}STT     :{/bright-yellow-fg}{/bold}{bold}{bright-green-fg} ${walletInfo.balanceNative}{/bright-green-fg}{/bold}
+├─ {bold}{bright-yellow-fg}Ping    :{/bright-yellow-fg}{/bold}{bold}{bright-green-fg} ${walletInfo.balancePing}{/bright-green-fg}{/bold}
+├─ {bold}{bright-yellow-fg}Pong    :{/bright-yellow-fg}{/bold}{bold}{bright-green-fg} ${walletInfo.balancePong}{/bright-green-fg}{/bold}
+└─ {bold}{bright-yellow-fg}Network :{/bright-yellow-fg}{/bold}{bold}{bright-red-fg} ${walletInfo.network}{/bright-red-fg}{/bold}`;
   walletBox.setContent(content);
   safeRender();
 }
 
-async function checkAndApproveToken(tokenAddress, spender, amount) {
-  const erc20ABI = [
-    "function allowance(address owner, address spender) view returns (uint256)",
-    "function approve(address spender, uint256 amount) returns (bool)"
-  ];
-  const tokenContract = new ethers.Contract(tokenAddress, erc20ABI, globalWallet);
-  const currentAllowance = await tokenContract.allowance(globalWallet.address, spender);
-  if (currentAllowance < amount) {
-    addLog(`Approval diperlukan untuk token ${getShortAddress(tokenAddress)}. Allowance saat ini: ${ethers.formatEther(currentAllowance)}`);
+  async function approveTokenForSwap(tokenAddress, spender, amount) {
+    const erc20ABI = [
+      "function approve(address spender, uint256 amount) returns (bool)"
+    ];
+    const tokenContract = new ethers.Contract(tokenAddress, erc20ABI, globalWallet);
     const maxApproval = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
     const tx = await tokenContract.approve(spender, maxApproval);
     addLog(`Approval TX dikirim: ${getShortHash(tx.hash)}`);
     await tx.wait();
     addLog("Approval berhasil.");
-  } else {
-    addLog("Token sudah di-approve.");
   }
-}
 
-async function autoSwapPingPong(totalSwaps) {
-  try {
-    if (!globalWallet) throw new Error("Wallet belum diinisialisasi.");
-    const swapContract = new ethers.Contract(swapContractAddress, swapContractABI, globalWallet);
-    addLog(`Mulai Auto Swap sebanyak ${totalSwaps} kali.`);
-    for (let i = 0; i < totalSwaps; i++) {
-      if (autoSwapCancelled) {
-        addLog("Auto Swap dibatalkan.");
-        break;
+  async function autoSwapPingPong(totalSwaps) {
+    try {
+      if (!globalWallet) throw new Error("Wallet belum diinisialisasi.");
+      const swapContract = new ethers.Contract(swapContractAddress, swapContractABI, globalWallet);
+      addLog(`Mulai Auto Swap sebanyak ${totalSwaps} kali.`);
+      for (let i = 0; i < totalSwaps; i++) {
+        if (autoSwapCancelled) {
+          addLog("Auto Swap dibatalkan.");
+          break;
+        }
+        const swapDirection = Math.random() < 0.5 ? "PongToPing" : "PingToPong";
+        let tokenIn, tokenOut;
+        if (swapDirection === "PongToPing") {
+          tokenIn = PONG_TOKEN_ADDRESS;
+          tokenOut = PING_TOKEN_ADDRESS;
+        } else {
+          tokenIn = PING_TOKEN_ADDRESS;
+          tokenOut = PONG_TOKEN_ADDRESS;
+        }
+        const randomAmount = randomInRange(50, 200);
+        const amountIn = ethers.parseUnits(randomAmount.toString(), 18);
+        const tokenInName = getTokenName(tokenIn);
+        const tokenOutName = getTokenName(tokenOut);
+        addLog(`Swap ${i + 1}: Melakukan approval token ${tokenInName}...`);
+        await approveTokenForSwap(tokenIn, swapContractAddress, amountIn);
+        addLog(`Swap ${i + 1}: Melakukan swap dari ${tokenInName} -> ${tokenOutName} dengan amount ${randomAmount}`);
+        const fee = 500;
+        const recipient = globalWallet.address;
+        const amountOutMin = 0;
+        const sqrtPriceLimitX96 = 0n;
+        try {
+          const tx = await swapContract.exactInputSingle({
+            tokenIn: tokenIn,
+            tokenOut: tokenOut,
+            fee: fee,
+            recipient: recipient,
+            amountIn: amountIn,
+            amountOutMinimum: amountOutMin,
+            sqrtPriceLimitX96: sqrtPriceLimitX96
+          });
+          addLog(`Swap ${i + 1} TX dikirim: ${getShortHash(tx.hash)}`);
+          await tx.wait();
+          addLog(`Swap ${i + 1} berhasil.`);
+          await updateWalletData();
+        } catch (error) {
+          addLog(`Swap ${i + 1} gagal: ${error.message}`);
+        }
+        if (i < totalSwaps - 1) {
+          const delayMs = randomInRange(20000, 50000);
+          addLog(`Menunggu ${delayMs / 1000} detik sebelum swap berikutnya...`);
+          await delay(delayMs);
+        }
       }
-      const swapDirection = Math.random() < 0.5 ? "PongToPing" : "PingToPong";
-      let tokenIn, tokenOut;
-      if (swapDirection === "PongToPing") {
-        tokenIn = PONG_TOKEN_ADDRESS;
-        tokenOut = PING_TOKEN_ADDRESS;
-      } else {
-        tokenIn = PING_TOKEN_ADDRESS;
-        tokenOut = PONG_TOKEN_ADDRESS;
+      addLog("Auto Swap selesai.");
+      autoSwapRunning = false;
+      updateSomniaSubMenuItems();
+      updateFaucetSubMenuItems();
+    } catch (err) {
+      addLog("Error pada Auto Swap: " + err.message);
+      autoSwapRunning = false;
+      updateSomniaSubMenuItems();
+      updateFaucetSubMenuItems();
+    }
+  }
+
+  function readRandomAddresses() {
+    try {
+      const data = fs.readFileSync("randomaddress.txt", "utf8");
+      return data.split("\n").map(addr => addr.trim()).filter(addr => addr !== "");
+    } catch (err) {
+      addLog("Gagal membaca file randomaddress.txt: " + err.message);
+      return [];
+    }
+  }
+
+  async function autoSendTokenRandom(totalSends, tokenAmountStr) {
+    try {
+      if (!globalWallet) throw new Error("Wallet belum diinisialisasi.");
+      const addresses = readRandomAddresses();
+      if (addresses.length === 0) {
+        addLog("Daftar alamat kosong.");
+        return;
       }
-      const randomAmount = randomInRange(100, 500);
-      const amountIn = ethers.parseUnits(randomAmount.toString(), 18);
-      const tokenInName = getTokenName(tokenIn);
-      const tokenOutName = getTokenName(tokenOut);
-      addLog(`Swap ${i + 1}: Sedang melakukan swap dari ${tokenInName} -> ${tokenOutName} dengan amount ${randomAmount}`);
-      await checkAndApproveToken(tokenIn, swapContractAddress, amountIn);
-      const fee = 500;
-      const recipient = globalWallet.address;
-      const amountOutMin = 0;
-      const sqrtPriceLimitX96 = 0n;
-      try {
-        const tx = await swapContract.exactInputSingle({
-          tokenIn: tokenIn,
-          tokenOut: tokenOut,
-          fee: fee,
-          recipient: recipient,
-          amountIn: amountIn,
-          amountOutMinimum: amountOutMin,
-          sqrtPriceLimitX96: sqrtPriceLimitX96
+      addLog(`Mulai Auto Send Token ke alamat random sebanyak ${totalSends} kali.`);
+      for (let i = 0; i < totalSends; i++) {
+        if (autoSendCancelled) {
+          addLog("Auto Send Token dibatalkan.");
+          break;
+        }
+        const randomIndex = randomInRange(0, addresses.length - 1);
+        const targetAddress = addresses[randomIndex];
+        addLog(`Auto Send: Mengirim ${tokenAmountStr} STT ke ${targetAddress}`);
+        const tx = await globalWallet.sendTransaction({
+          to: targetAddress,
+          value: ethers.parseUnits(tokenAmountStr, 18)
         });
-        addLog(`Swap ${i + 1} TX dikirim: ${getShortHash(tx.hash)}`);
+        addLog(`Auto Send ${i + 1}/${totalSends} TX dikirim: ${getShortHash(tx.hash)}`);
         await tx.wait();
-        addLog(`Swap ${i + 1} berhasil.`);
+        addLog(`Auto Send ${i + 1}/${totalSends} berhasil ke ${targetAddress}.`);
         await updateWalletData();
-      } catch (error) {
-        addLog(`Swap ${i + 1} gagal: ${error.message}`);
+        if (i < totalSends - 1) {
+          const delayMs = randomInRange(5000, 10000);
+          addLog(`Menunggu ${delayMs / 1000} detik sebelum pengiriman berikutnya...`);
+          await delay(delayMs);
+        }
       }
-      if (i < totalSwaps - 1) {
-        const delayMs = randomInRange(20000, 50000);
-        addLog(`Menunggu ${delayMs / 1000} detik sebelum swap berikutnya...`);
-        await delay(delayMs);
-      }
+      addLog("Auto Send Token selesai.");
+      autoSendRunning = false;
+      updateSendTokenSubMenuItems();
+    } catch (err) {
+      addLog("Error pada Auto Send Token: " + err.message);
+      autoSendRunning = false;
+      updateSendTokenSubMenuItems();
     }
-    addLog("Auto Swap selesai.");
-    autoSwapRunning = false;
-    updateSomniaSubMenuItems();
-    updateFaucetSubMenuItems();
-  } catch (err) {
-    addLog("Error pada Auto Swap: " + err.message);
-    autoSwapRunning = false;
-    updateSomniaSubMenuItems();
-    updateFaucetSubMenuItems();
   }
-}
 
-function readRandomAddresses() {
-  try {
-    const data = fs.readFileSync("randomaddress.txt", "utf8");
-    return data.split("\n").map(addr => addr.trim()).filter(addr => addr !== "");
-  } catch (err) {
-    addLog("Gagal membaca file randomaddress.txt: " + err.message);
-    return [];
-  }
-}
-
-async function autoSendTokenRandom(totalSends, tokenAmountStr) {
-  try {
-    if (!globalWallet) throw new Error("Wallet belum diinisialisasi.");
-    const addresses = readRandomAddresses();
-    if (addresses.length === 0) {
-      addLog("Daftar alamat kosong.");
-      return;
-    }
-    addLog(`Mulai Auto Send Token ke alamat random sebanyak ${totalSends} kali.`);
-    for (let i = 0; i < totalSends; i++) {
-      if (autoSendCancelled) {
-        addLog("Auto Send Token dibatalkan.");
-        break;
-      }
-      const randomIndex = randomInRange(0, addresses.length - 1);
-      const targetAddress = addresses[randomIndex];
-      addLog(`Auto Send: Mengirim ${tokenAmountStr} STT ke ${targetAddress}`);
+  async function autoSendTokenChosen(targetAddress, tokenAmountStr) {
+    try {
+      if (!globalWallet) throw new Error("Wallet belum diinisialisasi.");
+      addLog(`Mengirim ${tokenAmountStr} STT ke alamat ${targetAddress}`);
       const tx = await globalWallet.sendTransaction({
         to: targetAddress,
         value: ethers.parseUnits(tokenAmountStr, 18)
       });
-      addLog(`Auto Send ${i + 1}/${totalSends} TX dikirim: ${getShortHash(tx.hash)}`);
+      addLog(`Transaksi dikirim. Tx Hash: ${getShortHash(tx.hash)}`);
       await tx.wait();
-      addLog(`Auto Send ${i + 1}/${totalSends} berhasil ke ${targetAddress}.`);
+      addLog(`Pengiriman token ke ${targetAddress} berhasil.`);
+      autoSendRunning = false;
+      updateSendTokenSubMenuItems();
       await updateWalletData();
-      if (i < totalSends - 1) {
-        const delayMs = randomInRange(5000, 10000);
-        addLog(`Menunggu ${delayMs / 1000} detik sebelum pengiriman berikutnya...`);
-        await delay(delayMs);
-      }
+    } catch (err) {
+      addLog("Error pada Send Token: " + err.message);
+      autoSendRunning = false;
+      updateSendTokenSubMenuItems();
     }
-    addLog("Auto Send Token selesai.");
-    autoSendRunning = false;
-    updateSendTokenSubMenuItems();
-  } catch (err) {
-    addLog("Error pada Auto Send Token: " + err.message);
-    autoSendRunning = false;
-    updateSendTokenSubMenuItems();
   }
-}
 
-async function autoSendTokenChosen(targetAddress, tokenAmountStr) {
-  try {
-    if (!globalWallet) throw new Error("Wallet belum diinisialisasi.");
-    addLog(`Mengirim ${tokenAmountStr} STT ke alamat ${targetAddress}`);
-    const tx = await globalWallet.sendTransaction({
-      to: targetAddress,
-      value: ethers.parseUnits(tokenAmountStr, 18)
-    });
-    addLog(`Transaksi dikirim. Tx Hash: ${getShortHash(tx.hash)}`);
-    await tx.wait();
-    addLog(`Pengiriman token ke ${targetAddress} berhasil.`);
-    autoSendRunning = false;
-    updateSendTokenSubMenuItems();
-    await updateWalletData();
-  } catch (err) {
-    addLog("Error pada Send Token: " + err.message);
-    autoSendRunning = false;
-    updateSendTokenSubMenuItems();
+  function updateSomniaSubMenuItems() {
+    if (autoSwapRunning) {
+      somniaSubMenu.setItems([
+        "Auto Swap PING & PONG",
+        "Stop Transaction",
+        "Clear Transaction Logs",
+        "Back To Main Menu",
+        "Exit"
+      ]);
+    } else {
+      somniaSubMenu.setItems([
+        "Auto Swap PING & PONG",
+        "Clear Transaction Logs",
+        "Back To Main Menu",
+        "Exit"
+      ]);
+    }
+    safeRender();
   }
-}
-
-function updateSomniaSubMenuItems() {
-  if (autoSwapRunning) {
-    somniaSubMenu.setItems([
-      "Auto Swap PING & PONG",
-      "Stop Transaction",
-      "Clear Transaction Logs",
-      "Back To Main Menu",
-      "Exit"
-    ]);
-  } else {
-    somniaSubMenu.setItems([
-      "Auto Swap PING & PONG",
-      "Clear Transaction Logs",
-      "Back To Main Menu",
-      "Exit"
-    ]);
+  function updateFaucetSubMenuItems() {
+    if (autoSwapRunning || claimFaucetRunning) {
+      faucetSubMenu.setItems([
+        "Claim Faucet Ping (disabled)",
+        "Claim Faucet Pong (disabled)",
+        "Stop Transaction",
+        "Clear Transaction Logs",
+        "Back To Main Menu",
+        "Exit"
+      ]);
+    } else {
+      faucetSubMenu.setItems([
+        "Claim Faucet Ping",
+        "Claim Faucet Pong",
+        "Clear Transaction Logs",
+        "Back To Main Menu",
+        "Exit"
+      ]);
+    }
+    safeRender();
   }
-  safeRender();
-}
-function updateFaucetSubMenuItems() {
-  if (autoSwapRunning || claimFaucetRunning) {
-    faucetSubMenu.setItems([
-      "Claim Faucet Ping (disabled)",
-      "Claim Faucet Pong (disabled)",
-      "Stop Transaction",
-      "Clear Transaction Logs",
-      "Back To Main Menu",
-      "Exit"
-    ]);
-  } else {
-    faucetSubMenu.setItems([
-      "Claim Faucet Ping",
-      "Claim Faucet Pong",
-      "Clear Transaction Logs",
-      "Back To Main Menu",
-      "Exit"
-    ]);
+  function updateSendTokenSubMenuItems() {
+    if (autoSendRunning) {
+      sendTokenSubMenu.setItems([
+        "Auto Send Random Address (disabled)",
+        "Send To Choosen Address (disabled)",
+        "Stop Transaction",
+        "Clear Transaction Logs",
+        "Back To Menu",
+        "Exit"
+      ]);
+    } else {
+      sendTokenSubMenu.setItems([
+        "Auto Send Random Address",
+        "Send To Choosen Address",
+        "Clear Transaction Logs",
+        "Back To Menu",
+        "Exit"
+      ]);
+    }
+    safeRender();
   }
-  safeRender();
-}
-function updateSendTokenSubMenuItems() {
-  if (autoSendRunning) {
-    sendTokenSubMenu.setItems([
-      "Auto Send Random Address (disabled)",
-      "Send To Choosen Address (disabled)",
-      "Stop Transaction",
-      "Clear Transaction Logs",
-      "Back To Menu",
-      "Exit"
-    ]);
-  } else {
-    sendTokenSubMenu.setItems([
-      "Auto Send Random Address",
-      "Send To Choosen Address",
-      "Clear Transaction Logs",
-      "Back To Menu",
-      "Exit"
-    ]);
-  }
-  safeRender();
-}
 
 const screen = blessed.screen({
   smartCSR: true,
@@ -441,14 +445,15 @@ const screen = blessed.screen({
   fullUnicode: true,
   mouse: true
 });
+
 const headerBox = blessed.box({
   top: 0,
   left: "center",
   width: "100%",
-  height: 7,
   tags: true,
   style: { fg: "white" }
 });
+
 figlet.text("SOMNIA AUTO SWAP", { font: "Standard", horizontalLayout: "default" }, (err, data) => {
   if (err) {
     headerBox.setContent("{center}{bold}SOMNIA AUTO SWAP{/bold}{/center}");
@@ -457,21 +462,18 @@ figlet.text("SOMNIA AUTO SWAP", { font: "Standard", horizontalLayout: "default" 
   }
   safeRender();
 });
+
 const descriptionBox = blessed.box({
-  top: 7,
   left: "center",
   width: "100%",
-  height: 2,
   content: "{center}{bold}{bright-magenta-fg}=== Telegram Channel 🚀 : NT Exhaust (@NTExhaust) ==={/bright-magenta-fg}{/bold}{/center}",
   tags: true,
   style: { fg: "white" }
 });
+
 const logsBox = blessed.box({
   label: " Transaction Logs ",
-  top: 10,
-  left: 0,
-  width: "60%",
-  height: "100%-10",
+  left: "0%",
   border: { type: "line" },
   scrollable: true,
   alwaysScroll: true,
@@ -480,35 +482,31 @@ const logsBox = blessed.box({
   vi: true,
   tags: true,
   scrollbar: { ch: " ", inverse: true, style: { bg: "blue" } },
-  content: "",
   style: {
     border: { fg: "red" },
     fg: "bright-cyan",
-    bg: "black"
+    bg: "default"
   }
 });
+
 const walletBox = blessed.box({
   label: " Informasi Wallet ",
-  top: 10,
   left: "60%",
-  width: "40%",
-  height: "28%",
   border: { type: "line" },
+  tags: true,
   style: {
     border: { fg: "magenta" },
     fg: "white",
-    bg: "black",
+    bg: "default",
     align: "left",
     valign: "top"
   },
   content: ""
 });
+
 const mainMenu = blessed.list({
   label: " Menu ",
-  top: "66%",
   left: "60%",
-  width: "40%",
-  height: "40%",
   keys: true,
   vi: true,
   mouse: true,
@@ -523,10 +521,7 @@ const mainMenu = blessed.list({
 
 const somniaSubMenu = blessed.list({
   label: " Somnia Auto Swap Menu ",
-  top: "65%",
   left: "60%",
-  width: "40%",
-  height: "35%",
   keys: true,
   vi: true,
   mouse: true,
@@ -539,12 +534,10 @@ const somniaSubMenu = blessed.list({
   items: []
 });
 somniaSubMenu.hide();
+
 const faucetSubMenu = blessed.list({
   label: " Claim Faucet Menu ",
-  top: "65%",
   left: "60%",
-  width: "40%",
-  height: "35%",
   keys: true,
   vi: true,
   mouse: true,
@@ -557,12 +550,10 @@ const faucetSubMenu = blessed.list({
   items: []
 });
 faucetSubMenu.hide();
+
 const sendTokenSubMenu = blessed.list({
   label: " Auto Send Token Menu ",
-  top: "65%",
   left: "60%",
-  width: "40%",
-  height: "35%",
   keys: true,
   vi: true,
   mouse: true,
@@ -575,11 +566,13 @@ const sendTokenSubMenu = blessed.list({
   items: []
 });
 sendTokenSubMenu.hide();
+
 const promptBox = blessed.prompt({
   parent: screen,
   border: "line",
-  height: 5,
+  height: "20%",
   width: "50%",
+  bottom: "2%",
   top: "center",
   left: "center",
   label: "{bright-blue-fg}Swap Prompt{/bright-blue-fg}",
@@ -587,7 +580,7 @@ const promptBox = blessed.prompt({
   keys: true,
   vi: true,
   mouse: true,
-  style: { fg: "bright-white", bg: "black", border: { fg: "red" } }
+  style: { fg: "bright-white", bg: "default", border: { fg: "red" } }
 });
 
 screen.append(headerBox);
@@ -598,6 +591,7 @@ screen.append(mainMenu);
 screen.append(somniaSubMenu);
 screen.append(faucetSubMenu);
 screen.append(sendTokenSubMenu);
+
 screen.key(["escape", "q", "C-c"], () => process.exit(0));
 screen.key(["C-up"], () => {
   logsBox.scroll(-1);
@@ -607,11 +601,51 @@ screen.key(["C-down"], () => {
   logsBox.scroll(1);
   safeRender();
 });
+
+function adjustLayout() {
+  const screenHeight = screen.height;
+  const screenWidth = screen.width;
+  const headerHeight = Math.max(8, Math.floor(screenHeight * 0.15));
+  headerBox.height = headerHeight;
+  headerBox.width = "100%";
+  descriptionBox.top = "20%";
+  descriptionBox.height = Math.floor(screenHeight * 0.05);
+  logsBox.top = headerHeight + descriptionBox.height;
+  logsBox.left = 0;
+  logsBox.width = Math.floor(screenWidth * 0.6);
+  logsBox.height = screenHeight - (headerHeight + descriptionBox.height);
+  walletBox.top = headerHeight + descriptionBox.height;
+  walletBox.left = Math.floor(screenWidth * 0.6);
+  walletBox.width = Math.floor(screenWidth * 0.4);
+  walletBox.height = Math.floor(screenHeight * 0.35);
+  mainMenu.top = headerHeight + descriptionBox.height + walletBox.height;
+  mainMenu.left = Math.floor(screenWidth * 0.6);
+  mainMenu.width = Math.floor(screenWidth * 0.4);
+  mainMenu.height = screenHeight - (headerHeight + descriptionBox.height + walletBox.height);
+  somniaSubMenu.top = mainMenu.top;
+  somniaSubMenu.left = mainMenu.left;
+  somniaSubMenu.width = mainMenu.width;
+  somniaSubMenu.height = mainMenu.height;
+  faucetSubMenu.top = mainMenu.top;
+  faucetSubMenu.left = mainMenu.left;
+  faucetSubMenu.width = mainMenu.width;
+  faucetSubMenu.height = mainMenu.height;
+  sendTokenSubMenu.top = mainMenu.top;
+  sendTokenSubMenu.left = mainMenu.left;
+  sendTokenSubMenu.width = mainMenu.width;
+  sendTokenSubMenu.height = mainMenu.height;
+
+  safeRender();
+}
+
+screen.on("resize", adjustLayout);
+adjustLayout();
+
 safeRender();
 mainMenu.focus();
 updateLogs();
-safeRender();
 updateWalletData();
+
 mainMenu.on("select", (item) => {
   const selected = item.getText();
   if (selected === "Somnia Auto Swap") {
